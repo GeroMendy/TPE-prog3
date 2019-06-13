@@ -4,18 +4,19 @@ import list.List;
 import list.Iterador;
 import search.*;
 import sort.*;
+import recorrido.*;
 
 public class Sistema {
 
 	private Aeropuerto[]arrName,arrPais;
-	private Ruta[][] rutas;
+	private Grafo grafo;
 	private Reserva[]rsvs;
 	private int size;
 	
 	public Sistema(List aeropuertos,List vuelos,List reservas) {
 		size = aeropuertos.getSize();
 		initAerop(aeropuertos);
-		initRutas(vuelos);
+		initGrafo(vuelos);
 		initReservas(reservas);
 	}
 	private void initAerop(List l) {
@@ -42,9 +43,9 @@ public class Sistema {
 		ms.sort(arrName,new CompName());
 		ms.sort(arrPais,new CompPais());
 	}
-	private void initRutas(List l) {
+	private void initGrafo(List l) {
 
-		rutas=new Ruta[size][size];
+		grafo=new Grafo(size);
 		String[] data;
 		Iterador it=l.iterator();
 		Aeropuerto or,de;
@@ -56,7 +57,7 @@ public class Sistema {
 				de=getAeropuerto(data[1]);
 				rutaActual=new Ruta(or,de,Double.parseDouble(data[2]),Integer.parseInt(data[3]));
 				
-				rutas[or.id()][de.id()]=rutaActual;
+				grafo.setRuta(rutaActual);
 
 				String[]aerolineas=CSVTools.cut(data[4],",");
 				
@@ -101,12 +102,12 @@ public class Sistema {
 	}
 
 	private Ruta getRuta(int origen,int destino) {
-		return rutas[origen][destino];
+		return grafo.get(origen, destino);
 	}
 	private Ruta getRuta(Aeropuerto origen,Aeropuerto destino) {
 		Ruta r=null;
 		if(origen!=null&&destino!=null) {
-			r=rutas[origen.id()][destino.id()];
+			r=grafo.get(origen, destino);
 		}
 		return r;
 	}
@@ -114,46 +115,17 @@ public class Sistema {
 		BinarySearch busc=new BinarySearch();
 		return (Aeropuerto)busc.search(arrName, new Aeropuerto(name,"",""));
 	}
-	private int getAsientos(Ruta r,String aeroln) {
+	public int getAsientos(Ruta r,String aeroln) {
  		int asientos=r.getAsientos(aeroln);
  		BinarySearch busc=new BinarySearch();
  		Reserva aux=(Reserva)busc.search(rsvs,new Reserva(r.getOrigen(),r.getDestino(),aeroln,0));
  		if(aux!=null)return aux.pasajesLibres(asientos);
  		else return asientos;
 	}
-	private void back(int o,int[]visit,String x,List sc,List recActual) {
-		Ruta rutaActual;
-		for(int i=0;i<size;i++) {
-			rutaActual=getRuta(o, i);
-			if(rutaActual!=null&&visit[i]>=0) {
-				if(puedeEvitarAerolinea(rutaActual,x)) {
-					recActual.add(rutaActual);
-					if(visit[i]>0) {
-						sc.add(recActual.reverseCopy());
-					}else {
-						visit[i]=-1;
-						back(i,visit,x,sc,recActual);
-						visit[i]=0;
-					}
-					recActual.removeFront();
-				}
-			}
-		}
-	}
-	private boolean puedeEvitarAerolinea(Ruta r,String x) {
-		String[]keys=r.keyAerolineas();
-		boolean posible=false;
-		int i=0;
-		while(!posible&&i<keys.length) {
-			posible=!keys[i].equals(x);
-			if(posible) {
-				posible=(getAsientos(r,keys[i]))>0;
-			}
-			i++;
-		}
-		return posible;
-	}
 	
+	public int getSize() {
+		return size;
+	}
 	public String getAeropuertos() {
 		String resp="";
 		for(int i=0;i<size;i++) {
@@ -185,14 +157,10 @@ public class Sistema {
 	}
 	public String service2(String origen,String destino,String aerolineaEvitada) {
 		String respuesta="";
-		List sc=new List(),recActual=new List();
-		int or=getAeropuerto(origen).id(),de=getAeropuerto(destino).id();
-		int[]visit=new int[size];
-		for(int i=0;i<size;i++) {
-			visit[i]=0;
-		}
-		visit[de]=1;
-		back(or,visit,aerolineaEvitada,sc,recActual);
+		Backtracking b=new Backtracking();
+		Aeropuerto or=getAeropuerto(origen),de=getAeropuerto(destino);
+		List sc=b.BactrackingServicio2(grafo,size,aerolineaEvitada,or,de,rsvs);
+		List recActual;
 		Iterador itSc=sc.iterator();
 		int numViajes=1;
 		while(itSc.hasNext()) {
@@ -248,5 +216,54 @@ public class Sistema {
 		if(respuesta.equals(""))respuesta="No se realizan vuelos directos desde "+paisOrigen+" a "+paisDestino;
 		return respuesta;
 	}
-
+	
+	//ETAPA 2.
+	
+	public List AgenteViajeroBack() {
+		Backtracking b=new Backtracking();
+		return b.bactrackingAgenteViajero(grafo,size);
+	}
+	public List AgenteViajeroGreedy() {
+		List sc = new List();
+		int[]estado = new int[size];
+		for(int i=0;i<size;i++) {
+			estado[i]=0;
+		}
+		greedyAV(0,sc,estado);
+		return sc.reverseCopy();
+	}
+	
+	private void greedyAV(int actual,List sc,int[] estado) {
+		Ruta r=null;
+		if(sc.getSize()>=size-1) {
+			r=getRuta(actual,0);
+			if(r!=null) {
+				System.out.println("( "+r.getOrigen().getName()+" ---> "+r.getDestino().getName()+" ) dist: "+r.distancia()+" km.");
+				sc.add(r);
+			}
+		}else {
+			double menorDist=-1.0,distRuta;
+			int masCerca=-1;
+			for(int i=1;i<size;i++){
+				r=getRuta(actual,i);
+				if(r!=null&&estado[i]==0) {
+					distRuta=r.distancia();
+					
+					System.out.print("( "+r.getOrigen().getName()+" ---> "+r.getDestino().getName()+" ) dist: "+distRuta+" km.\t");
+					
+					if(menorDist<0||menorDist>distRuta) {
+						menorDist=distRuta;
+						masCerca=i;
+					}
+				}
+			}
+			if(masCerca>0) {
+				r=getRuta(actual, masCerca);
+				System.out.println("Viaje mas corto sin repertir aeropuertos: ( "+r.getOrigen().getName()+" ---> "+r.getDestino().getName()+" )");
+				estado[masCerca]=1;
+				sc.add(r);
+				greedyAV(masCerca,sc,estado);
+			}
+		}
+	}
 }

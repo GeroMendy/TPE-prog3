@@ -15,6 +15,9 @@ public class List {
 		first = aux;
 		size++;
 	}
+	public boolean isEmpty() {
+		return size==0;
+	}
 	public Object get(int pos) {
 		Node aux = first;
 		for(int i=1;i<pos;i++) {
