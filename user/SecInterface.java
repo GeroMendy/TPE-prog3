@@ -52,11 +52,13 @@ public class SecInterface implements User{
 	private String agenteViajeroBack(Sistema sist) {
 		String respuesta="";
 		double dist=0;
+		System.out.println(sist);
 		List l = sist.AgenteViajeroBack();
+
+		if(l==null)return "\n\nERROR : No es posible realizar el recorrido sin repetir aeropuertos.\n\n";
 		Iterador it=l.iterator();
 		Ruta r;
-		Aeropuerto o,d;
-		if(l.getSize()<sist.getSize())respuesta="\n\nERROR : No es posible realizar el recorrido sin repetir aeropuertos.\n\n";
+		Aeropuerto o,d;		
 		while(it.hasNext()) {
 			r=(Ruta)it.next();
 			o=r.getOrigen();

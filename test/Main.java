@@ -6,10 +6,10 @@ public class Main {
 
 	public static void main(String[]args) {
 		
-		String pathAeropuertos ="";
-		String pathRutas = "";
-		String pathReservas ="";
-		String pathRespuesta =""; //path a donde se quiere guardar la respuesta.
+		String pathAeropuertos ="tpe\\Datasets\\Aeropuertos.csv";
+		String pathRutas = "tpe\\Datasets\\Rutas.csv";
+		String pathReservas ="tpe\\Datasets\\Reservas.csv";
+		String pathRespuesta ="tpe\\Datasets\\Respuesta.csv";
 		
 		UserInterface user = new UserInterface(pathAeropuertos,pathRutas,pathReservas,pathRespuesta);
 		
